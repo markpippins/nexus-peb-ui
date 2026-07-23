@@ -154,7 +154,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
             <span>CAUSAL GRAPH & TRACE TREE EXPLORER</span>
           </h1>
           <p className="text-[11px] text-zinc-400 mt-0.5">
-            Explore transaction lineage, decision ancestry chains, and recursive trace decision trees.
+            Explore transaction lineage, decision ancestry chains, trace hierarchies, and governance event timelines.
           </p>
         </div>
 
@@ -224,69 +224,146 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
             </div>
 
             {lineage && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Target Transaction Box */}
-                <div className="p-3.5 rounded bg-zinc-950 border border-emerald-800/80 space-y-2">
-                  <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-                    <span>PRIMARY TRANSACTION UNDER TEST</span>
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                      {lineage.transaction.admission_result}
-                    </span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Target Transaction Box */}
+                  <div className="p-3.5 rounded bg-zinc-950 border border-emerald-800/80 space-y-2">
+                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                      <span>PRIMARY TRANSACTION UNDER TEST</span>
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                        {lineage.transaction.admission_result}
+                      </span>
+                    </div>
+
+                    <div className="text-sm font-bold text-zinc-100 font-mono">{lineage.transaction.id}</div>
+                    <div className="text-zinc-400 text-[11px] space-y-1">
+                      <div>Entity: <span className="text-zinc-200">{lineage.transaction.entity_id}</span></div>
+                      <div>Tool Executed: <span className="text-amber-300 font-bold">{lineage.transaction.tool_name}</span></div>
+                      <div>Role: <span className="text-indigo-300">{lineage.transaction.agent_role}</span></div>
+                      <div>Duration: <span className="text-zinc-300">{lineage.transaction.duration_ms}ms</span></div>
+                    </div>
+
+                    <div className="pt-2 border-t border-zinc-900">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold">State Delta Patch:</span>
+                      <pre className="mt-1 p-2 rounded bg-zinc-900 border border-zinc-800 text-emerald-300 text-[10px] overflow-x-auto">
+                        {JSON.stringify(lineage.transaction.state_delta, null, 2)}
+                      </pre>
+                    </div>
                   </div>
 
-                  <div className="text-sm font-bold text-zinc-100 font-mono">{lineage.transaction.id}</div>
-                  <div className="text-zinc-400 text-[11px] space-y-1">
-                    <div>Entity: <span className="text-zinc-200">{lineage.transaction.entity_id}</span></div>
-                    <div>Tool Executed: <span className="text-amber-300 font-bold">{lineage.transaction.tool_name}</span></div>
-                    <div>Role: <span className="text-indigo-300">{lineage.transaction.agent_role}</span></div>
-                    <div>Duration: <span className="text-zinc-300">{lineage.transaction.duration_ms}ms</span></div>
-                  </div>
+                  {/* Capabilities Checked & Violations Raised */}
+                  <div className="space-y-4">
+                    <div className="p-3.5 rounded bg-zinc-950 border border-zinc-800 space-y-2">
+                      <div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                        CAPABILITIES CHECKED AT ADMISSION
+                      </div>
+                      {lineage.capabilities_checked.map((cap) => (
+                        <div key={cap.id} className="p-2 rounded bg-cyan-950/30 border border-cyan-800/60 text-cyan-200 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold">{cap.capability}</div>
+                            <div className="text-[9px] text-cyan-400">Granted by: {cap.granted_by}</div>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                            ACTIVE
+                          </span>
+                        </div>
+                      ))}
+                    </div>
 
-                  <div className="pt-2 border-t border-zinc-900">
-                    <span className="text-[10px] text-zinc-500 uppercase font-bold">State Delta Patch:</span>
-                    <pre className="mt-1 p-2 rounded bg-zinc-900 border border-zinc-800 text-emerald-300 text-[10px] overflow-x-auto">
-                      {JSON.stringify(lineage.transaction.state_delta, null, 2)}
-                    </pre>
+                    <div className="p-3.5 rounded bg-zinc-950 border border-rose-900/80 space-y-2">
+                      <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldAlert className="w-4 h-4 text-rose-400" />
+                        <span>VIOLATIONS RAISED BY TRANSACTION</span>
+                      </div>
+                      {lineage.violations_raised.map((v) => (
+                        <div key={v.id} className="p-2 rounded bg-rose-950/40 border border-rose-800 text-rose-200 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-rose-300">{v.violation_type}</div>
+                            <div className="text-[9px] text-rose-400">Attempted: {v.capability_attempted}</div>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
+                            {v.severity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Capabilities Checked & Violations Raised */}
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded bg-zinc-950 border border-zinc-800 space-y-2">
-                    <div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
-                      CAPABILITIES CHECKED AT ADMISSION
-                    </div>
-                    {lineage.capabilities_checked.map((cap) => (
-                      <div key={cap.id} className="p-2 rounded bg-cyan-950/30 border border-cyan-800/60 text-cyan-200 flex items-center justify-between">
-                        <div>
-                          <div className="font-bold">{cap.capability}</div>
-                          <div className="text-[9px] text-cyan-400">Granted by: {cap.granted_by}</div>
-                        </div>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
-                          ACTIVE
+                {/* ENRICHED SECTION: LINEAGE TRACE HIERARCHY */}
+                {lineage.traces_tree && lineage.traces_tree.length > 0 && (
+                  <div className="p-4 rounded bg-zinc-950 border border-zinc-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <span className="font-bold text-emerald-300 uppercase text-xs">
+                          EXECUTION TRACE HIERARCHY (`lineage.traces_tree`)
                         </span>
                       </div>
-                    ))}
-                  </div>
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        {lineage.traces_tree.length} Root Traces
+                      </span>
+                    </div>
 
-                  <div className="p-3.5 rounded bg-zinc-950 border border-rose-900/80 space-y-2">
-                    <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-rose-400" />
-                      <span>VIOLATIONS RAISED BY TRANSACTION</span>
-                    </div>
-                    {lineage.violations_raised.map((v) => (
-                      <div key={v.id} className="p-2 rounded bg-rose-950/40 border border-rose-800 text-rose-200 flex items-center justify-between">
-                        <div>
-                          <div className="font-bold text-rose-300">{v.violation_type}</div>
-                          <div className="text-[9px] text-rose-400">Attempted: {v.capability_attempted}</div>
+                    <div className="space-y-2">
+                      {lineage.traces_tree.map((node) => (
+                        <div key={node.id} className="p-3 rounded bg-zinc-900/80 border border-zinc-800 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-zinc-100">{node.stage.toUpperCase()}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">
+                              CONFIDENCE: {Math.round(node.confidence * 100)}%
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 font-mono">
+                            Trace ID: <span className="text-emerald-400">{node.id}</span> | Work Request: <span className="text-indigo-300">{node.work_request_id}</span>
+                          </div>
+
+                          {node.children && node.children.length > 0 && (
+                            <div className="pl-3 border-l-2 border-emerald-800/60 mt-2 space-y-2">
+                              {node.children.map((child) => (
+                                <div key={child.id} className="p-2 rounded bg-zinc-950 border border-zinc-800 text-[10px]">
+                                  <div className="flex items-center justify-between font-bold text-amber-300">
+                                    <span>➔ Stage: {child.stage}</span>
+                                    <span className="text-emerald-400">{Math.round(child.confidence * 100)}%</span>
+                                  </div>
+                                  {child.rejected_alternatives && child.rejected_alternatives.length > 0 && (
+                                    <div className="mt-1 text-rose-300/80 italic text-[9px]">
+                                      Rejected: {child.rejected_alternatives.map(a => `${a.option || a.stage} (${a.reason})`).join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
-                          {v.severity}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* ENRICHED SECTION: GOVERNANCE TIMELINE */}
+                {lineage.governance_events && lineage.governance_events.length > 0 && (
+                  <div className="p-4 rounded bg-zinc-950 border border-zinc-800 space-y-3">
+                    <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
+                      <Clock className="w-4 h-4 text-indigo-400" />
+                      <span className="font-bold text-indigo-300 uppercase text-xs">
+                        GOVERNANCE EVENTS TIMELINE (`lineage.governance_events`)
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {lineage.governance_events.map((evt) => (
+                        <div key={evt.id} className="p-2.5 rounded bg-zinc-900 border border-zinc-800 flex items-start justify-between text-[10px]">
+                          <div>
+                            <div className="font-bold text-zinc-200">{evt.event_type}</div>
+                            <div className="text-zinc-400 text-[9px] mt-0.5">Author: <span className="text-indigo-300">{evt.author_id}</span></div>
+                          </div>
+                          <span className="text-zinc-500 text-[9px]">{new Date(evt.timestamp).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

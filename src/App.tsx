@@ -9,6 +9,7 @@ import { StateDiffView } from './components/StateDiffView';
 import { ApiSpecsView } from './components/ApiSpecsView';
 import { StatusBar } from './components/StatusBar';
 import { MockConfigModal } from './components/MockConfigModal';
+import { TransactionDetailPanel } from './components/TransactionDetailPanel';
 import { pebClient, ApiMode } from './api/pebClient';
 import { ThemeMode } from './types/peb';
 
@@ -24,6 +25,7 @@ export default function App() {
   const [showMockConfig, setShowMockConfig] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [targetEntityForCapability, setTargetEntityForCapability] = useState<string>('agent:runner-pod-99');
+  const [inspectTxId, setInspectTxId] = useState<string | null>(null);
 
   // Stats for Header / Status Bar
   const [activeBreakers, setActiveBreakers] = useState(2);
@@ -193,6 +195,19 @@ export default function App() {
         onBaseUrlChange={setBaseUrl}
         onTriggerRefresh={() => setRefreshKey((k) => k + 1)}
       />
+
+      {/* TRANSACTION DETAIL PANEL SLIDE-OVER */}
+      {inspectTxId && (
+        <TransactionDetailPanel
+          transactionId={inspectTxId}
+          onClose={() => setInspectTxId(null)}
+          onNavigateToLineage={(txId) => {
+            setActiveView('causal');
+            setInspectTxId(null);
+          }}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }

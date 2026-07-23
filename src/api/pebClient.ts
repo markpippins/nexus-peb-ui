@@ -356,6 +356,67 @@ class PebApiClient {
     return res;
   }
 
+  public async getTransaction(id: string): Promise<Transaction> {
+    if (this.mode === 'live') {
+      const res = await fetch(`${this.baseUrl}/api/peb/transactions/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`Transaction not found: ${id}`);
+      const data = await res.json();
+      const raw = data.transaction || data;
+      return {
+        id: raw.id,
+        entity_id: raw.entity_id || 'unknown',
+        tool_name: raw.tool_name || 'unknown_tool',
+        admission_result: raw.admission_result || 'ADMITTED',
+        state_delta: raw.state_delta || {},
+        keys: raw.keys || Object.keys(raw.state_delta || {}),
+        created_at: raw.created_at || new Date().toISOString(),
+        duration_ms: raw.duration_ms || raw.latency_ms || 120,
+        agent_role: raw.agent_role || 'code_executor_role',
+        idempotency_key: raw.idempotency_key || `idemp_${raw.id}`,
+        input: raw.input || { command: `exec ${raw.tool_name}`, target: raw.entity_id },
+        output: raw.output || { status: raw.admission_result, bytes_modified: 412 },
+        before_hash: raw.before_hash || 'sha256:7f8a8109a2771b02',
+        after_hash: raw.after_hash || 'sha256:e321a4f910332a81',
+        committed_at: raw.committed_at || raw.created_at || new Date().toISOString(),
+        kernel_event_id: raw.kernel_event_id ?? null,
+        kernel_event_type: raw.kernel_event_type ?? null
+      };
+    }
+
+    await this.delay();
+    const existing = MOCK_TRANSACTIONS.find((t) => t.id === id);
+    const baseTx = existing || {
+      id,
+      entity_id: 'agent:runner-pod-99',
+      tool_name: 'exec_container_script',
+      admission_result: 'ADMITTED' as const,
+      state_delta: { 'governance.policy.v2': { mode: 'STRICT', max_memory_mb: 2048 } },
+      created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      duration_ms: 124,
+      agent_role: 'code_executor_role'
+    };
+
+    return {
+      ...baseTx,
+      idempotency_key: `key_idemp_${baseTx.id}`,
+      input: {
+        command: `exec ${baseTx.tool_name}`,
+        target_entity: baseTx.entity_id,
+        options: { timeout_ms: 5000, enforce_isolation: true }
+      },
+      output: {
+        status: baseTx.admission_result,
+        logs: [`[PEB KERNEL] Admission evaluation: ${baseTx.admission_result}`],
+        state_updated: true
+      },
+      before_hash: 'sha256:7f8a8109a2771b02',
+      after_hash: 'sha256:e321a4f910332a81',
+      committed_at: baseTx.created_at,
+      kernel_event_id: `evt_k_${baseTx.id}`,
+      kernel_event_type: 'state.commit.v1'
+    };
+  }
+
   public async getLineage(transactionId: string): Promise<LineagePayload> {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/transactions/${encodeURIComponent(transactionId)}/lineage`);
@@ -373,7 +434,8 @@ class PebApiClient {
             granted_by: 'security_policy_enforcer',
             active: true,
             created_at: new Date().toISOString(),
-            expires_at: null
+            expires_at: null,
+            status: 'active'
           }
         ],
         violations_raised: (data.violations || data.violations_raised || []).map((v: any) => ({
@@ -382,7 +444,10 @@ class PebApiClient {
           severity: v.severity || 'CRITICAL',
           capability_attempted: v.capability_attempted || 'exec:raw_sql',
           created_at: v.created_at || v.violation_created_at || new Date().toISOString()
-        }))
+        })),
+        traces: data.traces || [],
+        traces_tree: data.traces_tree || [],
+        governance_events: data.governance_events || []
       };
     }
 
@@ -400,7 +465,8 @@ class PebApiClient {
           granted_by: 'security_policy_enforcer',
           active: true,
           created_at: new Date(Date.now() - 1000 * 3600 * 5).toISOString(),
-          expires_at: null
+          expires_at: null,
+          status: 'active'
         }
       ],
       violations_raised: [
@@ -411,7 +477,77 @@ class PebApiClient {
           capability_attempted: 'exec:raw_sql',
           created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString()
         }
-      ]
+      ],
+      traces: [
+        {
+          id: 'trc_001',
+          transaction_id: tx.id,
+          work_request_id: 'wrk_850',
+          stage: 'execute',
+          inputs: { command: tx.tool_name },
+          confidence: 0.98,
+          status: 'completed',
+          created_at: tx.created_at,
+          rejected_alternatives: [
+            { stage: 'validate_alt', reason: 'Slower execution path', score: 0.12 }
+          ]
+        },
+        {
+          id: 'trc_002',
+          transaction_id: tx.id,
+          work_request_id: 'wrk_850',
+          parent_trace_id: 'trc_001',
+          stage: 'policy_check',
+          confidence: 0.94,
+          status: 'completed',
+          created_at: tx.created_at,
+          rejected_alternatives: [
+            { option: 'bypassed_policy', reason: 'Direct violation of strict mode', score: 0.05 }
+          ]
+        }
+      ],
+      traces_tree: [
+        {
+          id: 'trc_001',
+          transaction_id: tx.id,
+          work_request_id: 'wrk_850',
+          stage: 'pipeline_admission',
+          confidence: 0.98,
+          status: 'completed',
+          depth: 0,
+          created_at: tx.created_at,
+          rejected_alternatives: [],
+          children: [
+            {
+              id: 'trc_002',
+              transaction_id: tx.id,
+              parent_trace_id: 'trc_001',
+              stage: 'policy_eval',
+              confidence: 0.94,
+              status: 'completed',
+              depth: 1,
+              rejected_alternatives: [
+                { option: 'v1-legacy-permissive', reason: 'Deprecated policy version', score: 0.15 }
+              ],
+              children: [
+                {
+                  id: 'trc_003',
+                  transaction_id: tx.id,
+                  parent_trace_id: 'trc_002',
+                  stage: 'capability_verify',
+                  confidence: 0.42,
+                  status: tx.admission_result === 'ADMITTED' ? 'completed' : 'failed',
+                  depth: 2,
+                  rejected_alternatives: [
+                    { option: 'Auto-grant ephemeral token', reason: 'Role circuit breaker tripped', score: 0.02 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      governance_events: this.eventsStore.slice(0, 3)
     };
   }
 
@@ -477,6 +613,72 @@ class PebApiClient {
     }
     await this.delay();
     return MOCK_CAPABILITY_GAP;
+  }
+
+  public async getCapabilities(entityId: string): Promise<CapabilityGrant[]> {
+    if (this.mode === 'live') {
+      const res = await fetch(`${this.baseUrl}/api/peb/entities/${encodeURIComponent(entityId)}/capabilities`);
+      if (!res.ok) throw new Error(`Fetch capabilities failed: ${res.statusText}`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.capabilities || []);
+      return list.map((item: any) => {
+        const isActive = typeof item.active === 'boolean' ? item.active : item.status === 'active';
+        return {
+          id: item.id || `cap_${Math.floor(Math.random() * 1000)}`,
+          entity_id: item.entity_id || entityId,
+          capability: item.capability || 'exec_container_script',
+          granted_by: item.granted_by || 'admin',
+          active: isActive,
+          created_at: item.created_at || new Date().toISOString(),
+          expires_at: item.expires_at || null,
+          status: (item.status as 'active' | 'expired') || (isActive ? 'active' : 'expired')
+        };
+      });
+    }
+
+    await this.delay();
+    return [
+      {
+        id: 'cap_001',
+        entity_id: entityId,
+        capability: 'exec_container_script',
+        granted_by: 'security_policy_enforcer',
+        active: true,
+        created_at: new Date(Date.now() - 1000 * 3600 * 72).toISOString(),
+        expires_at: null,
+        status: 'active'
+      },
+      {
+        id: 'cap_002',
+        entity_id: entityId,
+        capability: 'fs:read',
+        granted_by: 'admin',
+        active: true,
+        created_at: new Date(Date.now() - 1000 * 3600 * 48).toISOString(),
+        expires_at: null,
+        status: 'active'
+      },
+      {
+        id: 'cap_003',
+        entity_id: entityId,
+        capability: 'net:outbound:port_443',
+        granted_by: 'security_policy_enforcer',
+        active: false,
+        created_at: new Date(Date.now() - 1000 * 3600 * 96).toISOString(),
+        expires_at: new Date(Date.now() - 1000 * 3600 * 2).toISOString(),
+        status: 'expired'
+      },
+      {
+        id: 'cap_004',
+        entity_id: entityId,
+        capability: 'exec:raw_sql',
+        granted_by: 'admin',
+        active: false,
+        created_at: new Date(Date.now() - 1000 * 3600 * 120).toISOString(),
+        expires_at: new Date(Date.now() - 1000 * 3600 * 24).toISOString(),
+        status: 'expired'
+      }
+    ];
   }
 
   public async getStateVersions(key: string): Promise<{ key: string; versions: StateVersion[]; current: any }> {

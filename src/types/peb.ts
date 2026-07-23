@@ -68,6 +68,15 @@ export interface Transaction {
   created_at: string;
   duration_ms: number;
   agent_role: string;
+  // Extended fields for single transaction API (/api/peb/transactions/{id})
+  idempotency_key?: string;
+  input?: Record<string, any>;
+  output?: Record<string, any>;
+  before_hash?: string;
+  after_hash?: string;
+  committed_at?: string;
+  kernel_event_id?: string | null;
+  kernel_event_type?: string | null;
 }
 
 export interface DecisionChainNode {
@@ -88,7 +97,8 @@ export interface TraceTreeNode {
   name: string;
   confidence: number; // 0.0 to 1.0
   rejected_alternatives: Array<{
-    option: string;
+    option?: string;
+    stage?: string;
     reason: string;
     score: number;
   }>;
@@ -106,6 +116,7 @@ export interface CapabilityGrant {
   active: boolean;
   created_at: string;
   expires_at: string | null;
+  status?: 'active' | 'expired' | 'revoked';
 }
 
 export interface CapabilityGapItem {
@@ -116,6 +127,30 @@ export interface CapabilityGapItem {
   gap_status: GapStatus;
   matching_grant?: CapabilityGrant;
   notes: string;
+}
+
+export interface LineageTrace {
+  id: string;
+  transaction_id?: string;
+  work_request_id?: string;
+  parent_trace_id?: string | null;
+  stage: string;
+  inputs?: Record<string, any>;
+  causal_entries?: any[];
+  rejected_alternatives?: Array<{
+    option?: string;
+    stage?: string;
+    reason: string;
+    score?: number;
+  }>;
+  confidence: number;
+  status: string;
+  created_at?: string;
+}
+
+export interface LineageTraceTreeNode extends LineageTrace {
+  children?: LineageTraceTreeNode[];
+  depth?: number;
 }
 
 export interface LineagePayload {
@@ -130,6 +165,9 @@ export interface LineagePayload {
     capability_attempted: string;
     created_at: string;
   }>;
+  traces?: LineageTrace[];
+  traces_tree?: LineageTraceTreeNode[];
+  governance_events?: GovernanceEvent[];
 }
 
 export interface StateVersion {
