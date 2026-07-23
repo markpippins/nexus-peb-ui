@@ -33,7 +33,7 @@ export type ApiMode = 'mock' | 'live';
 
 class PebApiClient {
   private mode: ApiMode = 'mock';
-  private baseUrl: string = (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:4206';
+  private baseUrl: string = (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:3111';
   private eventsStore: GovernanceEvent[] = generateInitialEvents();
   private mockSseSubscribers: Set<(event: GovernanceEvent) => void> = new Set();
   private sseTimer: any = null;
@@ -104,14 +104,15 @@ class PebApiClient {
       const data = await res.json();
       return {
         status: (data.status === 'healthy' ? 'ok' : data.status) || 'ok',
-        version: data.version || '1.4.0',
-        uptime_seconds: data.uptime_seconds || 0,
+        version: data.version,
+        uptime_seconds: data.uptime_seconds,
         counts: {
           governance_events: data.counts?.event_count ?? data.counts?.governance_events ?? 0,
           transactions: data.counts?.transaction_count ?? data.counts?.transactions ?? 0,
           decisions: data.counts?.decision_count ?? data.counts?.decisions ?? 0,
           active_circuit_breakers: data.counts?.circuit_breakers_tripped ?? data.counts?.active_circuit_breakers ?? 0,
-          violations_24h: data.counts?.violation_count ?? data.counts?.violations_24h ?? 0
+          violations_24h: data.counts?.violation_count ?? data.counts?.violations_24h ?? 0,
+          traces: data.counts?.trace_count
         }
       };
     }
@@ -149,7 +150,7 @@ class PebApiClient {
       }
       const eventsList = data.events || [];
       const nextCursor = data.next_cursor ?? null;
-      const hasMore = typeof data.has_more === 'boolean' ? data.has_more : (nextCursor !== null && eventsList.length >= (params?.limit || 20));
+      const hasMore = typeof data.has_more === 'boolean' ? data.has_more : (nextCursor !== null);
       return { events: eventsList, has_more: hasMore, next_cursor: nextCursor };
     }
 
@@ -251,15 +252,24 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Fetch circuit breakers failed: ${res.statusText}`);
       const raw = await res.json();
       const list = Array.isArray(raw) ? raw : (raw.circuit_breakers || []);
-      return list.map((item: any) => ({
-        role: item.role || item.agent_role || 'agent',
-        tripped: typeof item.tripped === 'boolean' ? item.tripped : (item.state === 'OPEN' || Number(item.tripped) > 0),
-        trip_count: item.failure_count ?? item.trip_count ?? (item.tripped ? 1 : 0),
-        last_tripped_at: item.tripped_at || item.last_tripped_at || item.updated_at || null,
-        threshold: item.threshold ?? 3,
-        active_violations: item.failure_count ?? item.active_violations ?? 0,
-        cooldown_seconds: item.retry_after ?? item.cooldown_seconds ?? 3600
-      }));
+      return list.map((item: any) => {
+        const tripCount = typeof item.tripped === 'number'
+          ? item.tripped
+          : (item.trip_count ?? item.failure_count ?? (item.tripped === true ? 1 : 0));
+        const state = item.state || (tripCount > 0 ? 'OPEN' : 'CLOSED');
+        const isOpen = state === 'OPEN' || tripCount > 0;
+        return {
+          role: item.role || item.agent_role || 'agent',
+          tripped: item.tripped ?? tripCount,
+          isOpen,
+          state,
+          trip_count: tripCount,
+          last_tripped_at: item.tripped_at || item.last_tripped_at || item.updated_at || null,
+          threshold: item.threshold ?? 3,
+          active_violations: item.failure_count ?? item.active_violations ?? 0,
+          cooldown_seconds: item.retry_after ?? item.cooldown_seconds ?? 3600
+        };
+      });
     }
     await this.delay();
     return MOCK_CIRCUIT_BREAKERS;
@@ -271,15 +281,21 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Fetch violations summary failed: ${res.statusText}`);
       const data = await res.json();
       const items = Array.isArray(data) ? data : (data.summary || []);
-      return items.map((item: any) => ({
-        group_key: item.key || item.group_key || 'UNKNOWN',
-        violation_type: item.violation_type || item.key || 'POLICY_VIOLATION',
-        severity: (item.key as Severity) || item.severity || 'WARNING',
-        entity_id: item.entity_id || 'system',
-        count: item.total ?? item.count ?? 0,
-        first_seen: item.first_seen || new Date().toISOString(),
-        last_seen: item.last_seen || new Date().toISOString()
-      }));
+      const effectiveGroupBy = data.group_by || groupBy;
+      return items.map((item: any) => {
+        const key = item.key || item.group_key || 'UNKNOWN';
+        const isSeverity = effectiveGroupBy === 'severity' && ['INFO', 'WARNING', 'CRITICAL', 'FATAL'].includes(key);
+        return {
+          group_key: key,
+          violation_type: item.violation_type || (effectiveGroupBy === 'violation_type' ? key : undefined),
+          severity: isSeverity ? (key as Severity) : item.severity,
+          entity_id: item.entity_id || (effectiveGroupBy === 'entity_id' ? key : undefined),
+          count: item.total ?? item.count ?? 0,
+          resolved_count: item.resolved_total ?? item.resolved_count,
+          first_seen: item.first_seen,
+          last_seen: item.last_seen
+        };
+      });
     }
     await this.delay();
     return MOCK_VIOLATIONS_SUMMARY;
@@ -291,16 +307,11 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Fetch entropy failed: ${res.statusText}`);
       const data = await res.json();
       if (data.summary && data.trend) {
-        const classes: Record<string, number> = {
-          STABLE_LOW: 0,
-          NOMINAL: 0,
-          ELEVATED: 0,
-          CRITICAL_HIGH: 0
-        };
+        const classes: Record<string, number> = {};
         let total = 0;
         data.summary.forEach((s: any) => {
-          classes[s.key] = s.total || s.count || 0;
-          total += s.total || s.count || 0;
+          classes[s.key] = s.total ?? s.count ?? 0;
+          total += s.total ?? s.count ?? 0;
         });
         const trend = data.trend.map((t: any) => ({
           date: t.day ? t.day.split('T')[0] : (t.date || new Date().toISOString().split('T')[0]),
@@ -309,7 +320,7 @@ class PebApiClient {
           author_id: 'system'
         }));
         return {
-          classes: classes as any,
+          classes,
           trend,
           total_decisions: total
         };
@@ -336,16 +347,27 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Fetch transactions failed: ${res.statusText}`);
       const data = await res.json();
       const items = Array.isArray(data) ? data : (data.transactions || []);
-      return items.map((t: any) => ({
-        id: t.id,
-        entity_id: t.entity_id || 'unknown',
-        tool_name: t.tool_name || 'unknown_tool',
-        admission_result: t.admission_result || 'ADMITTED',
-        state_delta: t.state_delta || {},
-        created_at: t.created_at || new Date().toISOString(),
-        duration_ms: t.latency_ms || t.duration_ms || 120,
-        agent_role: t.agent_role || 'agent'
-      }));
+      return items.map((t: any) => {
+        const duration = (t.committed_at && t.created_at)
+          ? Math.max(0, new Date(t.committed_at).getTime() - new Date(t.created_at).getTime())
+          : (t.latency_ms ?? t.duration_ms);
+        return {
+          id: t.id,
+          entity_id: t.entity_id || 'unknown',
+          tool_name: t.tool_name || 'unknown_tool',
+          admission_result: t.admission_result || 'ADMITTED',
+          state_delta: t.state_delta || {},
+          created_at: t.created_at || new Date().toISOString(),
+          committed_at: t.committed_at,
+          duration_ms: duration,
+          agent_role: t.agent_role,
+          idempotency_key: t.idempotency_key,
+          before_hash: t.before_hash,
+          after_hash: t.after_hash,
+          kernel_event_id: t.kernel_event_id,
+          kernel_event_type: t.kernel_event_type
+        };
+      });
     }
 
     await this.delay();
@@ -362,6 +384,9 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Transaction not found: ${id}`);
       const data = await res.json();
       const raw = data.transaction || data;
+      const duration = (raw.committed_at && raw.created_at)
+        ? Math.max(0, new Date(raw.committed_at).getTime() - new Date(raw.created_at).getTime())
+        : (raw.duration_ms ?? raw.latency_ms);
       return {
         id: raw.id,
         entity_id: raw.entity_id || 'unknown',
@@ -370,8 +395,8 @@ class PebApiClient {
         state_delta: raw.state_delta || {},
         keys: raw.keys || Object.keys(raw.state_delta || {}),
         created_at: raw.created_at || new Date().toISOString(),
-        duration_ms: raw.duration_ms || raw.latency_ms || 120,
-        agent_role: raw.agent_role || 'code_executor_role',
+        duration_ms: duration,
+        agent_role: raw.agent_role,
         idempotency_key: raw.idempotency_key || `idemp_${raw.id}`,
         input: raw.input || { command: `exec ${raw.tool_name}`, target: raw.entity_id },
         output: raw.output || { status: raw.admission_result, bytes_modified: 412 },
@@ -578,6 +603,15 @@ class PebApiClient {
       if (!res.ok) throw new Error(`Fetch trace tree failed: ${res.statusText}`);
       const data = await res.json();
       const rootNode = (data.tree && data.tree[0]) ? data.tree[0] : data;
+      const normalizeStatus = (st?: string): 'SUCCESS' | 'FAILED' | 'SKIPPED' => {
+        if (!st) return 'SUCCESS';
+        const s = st.toLowerCase();
+        if (s === 'completed' || s === 'success' || s === 'ok' || s === 'admitted') return 'SUCCESS';
+        if (s === 'failed' || s === 'error' || s === 'rejected') return 'FAILED';
+        if (s === 'skipped') return 'SKIPPED';
+        return 'FAILED';
+      };
+
       const normalizeNode = (n: any): TraceTreeNode => ({
         id: n.id || id,
         trace_id: n.trace_id || n.id || id,
@@ -588,7 +622,7 @@ class PebApiClient {
         metadata: n.metadata || {},
         children: Array.isArray(n.children) ? n.children.map(normalizeNode) : [],
         duration_ms: n.duration_ms || 45,
-        status: (n.status === 'completed' ? 'SUCCESS' : n.status) || 'SUCCESS'
+        status: normalizeStatus(n.status)
       });
       return normalizeNode(rootNode);
     }

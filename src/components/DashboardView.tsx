@@ -132,19 +132,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Metric 2 */}
         <div className={`p-3 rounded border ${
-          breakers.some((b) => b.tripped)
+          breakers.some((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped)))
             ? 'bg-rose-950/40 border-rose-900/80 text-rose-200'
             : isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-slate-900 border-slate-700'
         }`}>
           <div className="flex items-center justify-between text-zinc-400 text-[10px] uppercase tracking-wider font-semibold">
             <span>ROLE CIRCUIT BREAKERS</span>
-            <AlertTriangle className={`w-4 h-4 ${breakers.some((b) => b.tripped) ? 'text-rose-400 animate-bounce' : 'text-emerald-400'}`} />
+            <AlertTriangle className={`w-4 h-4 ${breakers.some((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))) ? 'text-rose-400 animate-bounce' : 'text-emerald-400'}`} />
           </div>
           <div className="text-2xl font-extrabold mt-1 text-rose-400">
-            {breakers.filter((b) => b.tripped).length} <span className="text-xs font-normal text-zinc-400">/ {breakers.length} TRIPPED</span>
+            {breakers.filter((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))).length} <span className="text-xs font-normal text-zinc-400">/ {breakers.length} TRIPPED</span>
           </div>
           <div className="text-[10px] text-zinc-500 mt-1">
-            {breakers.filter((b) => b.tripped).length > 0 ? 'Tripped roles auto-isolated' : 'All agent roles operational'}
+            {breakers.filter((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))).length > 0 ? 'Tripped roles auto-isolated' : 'All agent roles operational'}
           </div>
         </div>
 
@@ -214,15 +214,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span>{b.role}</span>
                   </td>
                   <td className={pyClass}>
-                    {b.tripped ? (
+                    {(b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))) ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800 animate-pulse inline-flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-rose-400" />
-                        TRIPPED
+                        TRIPPED ({b.state || 'OPEN'})
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        OPERATIONAL
+                        {b.state || 'CLOSED'}
                       </span>
                     )}
                   </td>
@@ -234,7 +234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </td>
                   <td className={pyClass}>
-                    {b.tripped ? (
+                    {(b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))) ? (
                       <span className="text-rose-400 font-mono flex items-center gap-1">
                         <Clock className="w-3 h-3 animate-spin" />
                         {b.cooldown_seconds}s
@@ -303,14 +303,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={violations} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="violation_type" stroke="#71717a" tick={{ fontSize: 9 }} interval={0} />
+                <XAxis dataKey="group_key" stroke="#71717a" tick={{ fontSize: 9 }} interval={0} />
                 <YAxis stroke="#71717a" tick={{ fontSize: 10 }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#18181b', borderColor: '#3f3f46', fontSize: '11px', color: '#e4e4e7' }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {violations.map((v, idx) => (
-                    <Cell key={idx} fill={SEVERITY_COLORS[v.severity] || '#10b981'} />
+                    <Cell key={idx} fill={SEVERITY_COLORS[v.severity || ''] || SEVERITY_COLORS[v.group_key] || '#10b981'} />
                   ))}
                 </Bar>
               </BarChart>

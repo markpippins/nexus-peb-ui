@@ -27,7 +27,9 @@ export interface GovernanceEvent {
 
 export interface CircuitBreakerStatus {
   role: string;
-  tripped: boolean;
+  tripped: number | boolean;
+  isOpen?: boolean;
+  state?: 'OPEN' | 'RECOVERING' | 'CLOSED';
   trip_count: number;
   last_tripped_at: string | null;
   threshold: number;
@@ -37,12 +39,13 @@ export interface CircuitBreakerStatus {
 
 export interface ViolationSummary {
   group_key: string;
-  violation_type: string;
-  severity: Severity;
-  entity_id: string;
+  violation_type?: string;
+  severity?: Severity;
+  entity_id?: string;
   count: number;
-  first_seen: string;
-  last_seen: string;
+  resolved_count?: number;
+  first_seen?: string;
+  last_seen?: string;
 }
 
 export interface EntropyPoint {
@@ -53,7 +56,7 @@ export interface EntropyPoint {
 }
 
 export interface EntropyRollup {
-  classes: Record<EntropyClass, number>;
+  classes: Record<string, number>;
   trend: EntropyPoint[];
   total_decisions: number;
 }
@@ -66,8 +69,8 @@ export interface Transaction {
   state_delta: Record<string, any>;
   keys?: string[];
   created_at: string;
-  duration_ms: number;
-  agent_role: string;
+  duration_ms?: number;
+  agent_role?: string;
   // Extended fields for single transaction API (/api/peb/transactions/{id})
   idempotency_key?: string;
   input?: Record<string, any>;
@@ -193,14 +196,15 @@ export interface StateDiff {
 }
 
 export interface ServiceHealth {
-  status: 'ok' | 'degraded' | 'down';
-  version: string;
-  uptime_seconds: number;
+  status: 'ok' | 'degraded' | 'down' | 'healthy';
+  version?: string;
+  uptime_seconds?: number;
   counts: {
     governance_events: number;
     transactions: number;
     decisions: number;
     active_circuit_breakers: number;
     violations_24h: number;
+    traces?: number;
   };
 }

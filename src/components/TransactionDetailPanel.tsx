@@ -184,11 +184,11 @@ export const TransactionDetailPanel: React.FC<TransactionDetailPanelProps> = ({
                   </div>
                   <div>
                     <span className="text-zinc-500 font-bold block text-[10px] uppercase">Agent Role:</span>
-                    <span className="text-indigo-300">{tx.agent_role}</span>
+                    <span className="text-indigo-300">{tx.agent_role || 'agent'}</span>
                   </div>
                   <div>
                     <span className="text-zinc-500 font-bold block text-[10px] uppercase">Latency:</span>
-                    <span className="text-zinc-300">{tx.duration_ms} ms</span>
+                    <span className="text-zinc-300">{tx.duration_ms ?? 0} ms</span>
                   </div>
                   <div>
                     <span className="text-zinc-500 font-bold block text-[10px] uppercase">Created At:</span>

@@ -1,6 +1,6 @@
 # PEB-SRV Backend Integration Guide
 
-This guide describes how to connect the **NEXUS PEB (Persistent Engineering Brain) Observability UI** to a live instance of the `peb-srv` backend daemon on port `4206`.
+This guide describes how to connect the **NEXUS PEB (Persistent Engineering Brain) Observability UI** to a live instance of the `peb-srv` backend daemon on port `3111`.
 
 > **Source of truth:** This document reflects the actual `peb-srv` REST API as implemented in `nexus/typescript/peb-srv/src/routes/`. See also the project README at `nexus/typescript/peb-srv/README.md`.
 
@@ -17,13 +17,13 @@ By default, the application runs with an **In-Memory Mock Scheme Engine**. You c
 | Parameter | Default Value | Description |
 | :--- | :--- | :--- |
 | **Api Mode** | `mock` (or `live`) | Toggles client mode between mock generator & REST/SSE endpoints |
-| **Base URL** | `http://localhost:4206` | Target URL of the running `peb-srv` REST API service |
+| **Base URL** | `http://localhost:3111` | Target URL of the running `peb-srv` REST API service |
 | **SSE Path** | `/api/peb/events/stream` | Server-Sent Events endpoint for real-time log tailing |
 
 To set the base URL programmatically, edit `.env` or set `VITE_PEB_API_BASE_URL`:
 
 ```env
-VITE_PEB_API_BASE_URL=http://localhost:4206
+VITE_PEB_API_BASE_URL=http://localhost:3111
 ```
 
 ---
