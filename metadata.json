@@ -1,0 +1,6 @@
+{
+  "name": "PEB Governance Observability Suite",
+  "description": "IDE component for PEB Persistent Engineering Brain governance schema, causal graph lineage, circuit breakers, violations, and state diffing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
