@@ -18,7 +18,9 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeMode>('steel');
   const [density, setDensity] = useState<'compact' | 'normal'>('compact');
   const [apiMode, setApiMode] = useState<ApiMode>('mock');
-  const [baseUrl, setBaseUrl] = useState<string>('http://localhost:3111');
+  const [baseUrl, setBaseUrl] = useState<string>(
+    (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:4206'
+  );
   const [showMockConfig, setShowMockConfig] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [targetEntityForCapability, setTargetEntityForCapability] = useState<string>('agent:runner-pod-99');

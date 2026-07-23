@@ -146,7 +146,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
           {/* BACKEND URL INPUT */}
           <div className="p-3.5 rounded bg-zinc-900/80 border border-zinc-800 space-y-2">
             <label className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider block">
-              PEB-SRV ENDPOINT URL (DEFAULT PORT 3111):
+              PEB-SRV ENDPOINT URL (DEFAULT PORT 4206):
             </label>
             <div className="flex gap-2">
               <input
@@ -154,7 +154,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
                 value={tempUrl}
                 onChange={(e) => setTempUrl(e.target.value)}
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-emerald-300 font-mono focus:outline-none focus:border-emerald-500"
-                placeholder="http://localhost:3111"
+                placeholder="http://localhost:4206"
               />
               <button
                 onClick={handleSaveUrl}

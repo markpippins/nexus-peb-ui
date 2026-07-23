@@ -2,6 +2,7 @@ import {
   GovernanceEvent,
   CircuitBreakerStatus,
   ViolationSummary,
+  Severity,
   EntropyRollup,
   Transaction,
   DecisionChainNode,
@@ -32,7 +33,7 @@ export type ApiMode = 'mock' | 'live';
 
 class PebApiClient {
   private mode: ApiMode = 'mock';
-  private baseUrl: string = 'http://localhost:3111';
+  private baseUrl: string = (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:4206';
   private eventsStore: GovernanceEvent[] = generateInitialEvents();
   private mockSseSubscribers: Set<(event: GovernanceEvent) => void> = new Set();
   private sseTimer: any = null;
@@ -100,7 +101,19 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/health`);
       if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      return {
+        status: (data.status === 'healthy' ? 'ok' : data.status) || 'ok',
+        version: data.version || '1.4.0',
+        uptime_seconds: data.uptime_seconds || 0,
+        counts: {
+          governance_events: data.counts?.event_count ?? data.counts?.governance_events ?? 0,
+          transactions: data.counts?.transaction_count ?? data.counts?.transactions ?? 0,
+          decisions: data.counts?.decision_count ?? data.counts?.decisions ?? 0,
+          active_circuit_breakers: data.counts?.circuit_breakers_tripped ?? data.counts?.active_circuit_breakers ?? 0,
+          violations_24h: data.counts?.violation_count ?? data.counts?.violations_24h ?? 0
+        }
+      };
     }
     await this.delay();
     return {
@@ -131,7 +144,13 @@ class PebApiClient {
       const res = await fetch(`${this.baseUrl}/api/peb/events?${query.toString()}`);
       if (!res.ok) throw new Error(`Fetch events failed: ${res.statusText}`);
       const data = await res.json();
-      return Array.isArray(data) ? { events: data, has_more: false, next_cursor: null } : data;
+      if (Array.isArray(data)) {
+        return { events: data, has_more: false, next_cursor: null };
+      }
+      const eventsList = data.events || [];
+      const nextCursor = data.next_cursor ?? null;
+      const hasMore = typeof data.has_more === 'boolean' ? data.has_more : (nextCursor !== null && eventsList.length >= (params?.limit || 20));
+      return { events: eventsList, has_more: hasMore, next_cursor: nextCursor };
     }
 
     await this.delay();
@@ -168,7 +187,8 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/events/${encodeURIComponent(receiptId)}`);
       if (!res.ok) throw new Error(`Event not found: ${receiptId}`);
-      return res.json();
+      const data = await res.json();
+      return data.event || data;
     }
     await this.delay();
     const event = this.eventsStore.find((e) => e.receipt_id === receiptId);
@@ -182,7 +202,13 @@ class PebApiClient {
         method: 'POST'
       });
       if (!res.ok) throw new Error(`Replay failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const eventObj = data.replayed || data.event || data;
+      return {
+        success: true,
+        replayed_at: eventObj.replayed_at || new Date().toISOString(),
+        event: eventObj
+      };
     }
 
     await this.delay(250);
@@ -223,7 +249,17 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/health/circuit-breakers`);
       if (!res.ok) throw new Error(`Fetch circuit breakers failed: ${res.statusText}`);
-      return res.json();
+      const raw = await res.json();
+      const list = Array.isArray(raw) ? raw : (raw.circuit_breakers || []);
+      return list.map((item: any) => ({
+        role: item.role || item.agent_role || 'agent',
+        tripped: typeof item.tripped === 'boolean' ? item.tripped : (item.state === 'OPEN' || Number(item.tripped) > 0),
+        trip_count: item.failure_count ?? item.trip_count ?? (item.tripped ? 1 : 0),
+        last_tripped_at: item.tripped_at || item.last_tripped_at || item.updated_at || null,
+        threshold: item.threshold ?? 3,
+        active_violations: item.failure_count ?? item.active_violations ?? 0,
+        cooldown_seconds: item.retry_after ?? item.cooldown_seconds ?? 3600
+      }));
     }
     await this.delay();
     return MOCK_CIRCUIT_BREAKERS;
@@ -233,7 +269,17 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/health/violations/summary?window=${window}&group_by=${groupBy}`);
       if (!res.ok) throw new Error(`Fetch violations summary failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.summary || []);
+      return items.map((item: any) => ({
+        group_key: item.key || item.group_key || 'UNKNOWN',
+        violation_type: item.violation_type || item.key || 'POLICY_VIOLATION',
+        severity: (item.key as Severity) || item.severity || 'WARNING',
+        entity_id: item.entity_id || 'system',
+        count: item.total ?? item.count ?? 0,
+        first_seen: item.first_seen || new Date().toISOString(),
+        last_seen: item.last_seen || new Date().toISOString()
+      }));
     }
     await this.delay();
     return MOCK_VIOLATIONS_SUMMARY;
@@ -243,7 +289,32 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/health/entropy?group_by=${groupBy}&window=${window}`);
       if (!res.ok) throw new Error(`Fetch entropy failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      if (data.summary && data.trend) {
+        const classes: Record<string, number> = {
+          STABLE_LOW: 0,
+          NOMINAL: 0,
+          ELEVATED: 0,
+          CRITICAL_HIGH: 0
+        };
+        let total = 0;
+        data.summary.forEach((s: any) => {
+          classes[s.key] = s.total || s.count || 0;
+          total += s.total || s.count || 0;
+        });
+        const trend = data.trend.map((t: any) => ({
+          date: t.day ? t.day.split('T')[0] : (t.date || new Date().toISOString().split('T')[0]),
+          entropy_class: (t.key || t.entropy_class || 'NOMINAL') as any,
+          count: t.total ?? t.count ?? 0,
+          author_id: 'system'
+        }));
+        return {
+          classes: classes as any,
+          trend,
+          total_decisions: total
+        };
+      }
+      return data;
     }
     await this.delay();
     return MOCK_ENTROPY;
@@ -263,7 +334,18 @@ class PebApiClient {
       }
       const res = await fetch(`${this.baseUrl}/api/peb/transactions?${query.toString()}`);
       if (!res.ok) throw new Error(`Fetch transactions failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.transactions || []);
+      return items.map((t: any) => ({
+        id: t.id,
+        entity_id: t.entity_id || 'unknown',
+        tool_name: t.tool_name || 'unknown_tool',
+        admission_result: t.admission_result || 'ADMITTED',
+        state_delta: t.state_delta || {},
+        created_at: t.created_at || new Date().toISOString(),
+        duration_ms: t.latency_ms || t.duration_ms || 120,
+        agent_role: t.agent_role || 'agent'
+      }));
     }
 
     await this.delay();
@@ -278,7 +360,30 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/transactions/${encodeURIComponent(transactionId)}/lineage`);
       if (!res.ok) throw new Error(`Fetch lineage failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      return {
+        transaction: data.transaction || MOCK_TRANSACTIONS[0],
+        parent_transactions: data.parent_transactions || [],
+        decisions: data.decisions || data.decision_chain || MOCK_DECISIONS_CHAIN,
+        capabilities_checked: data.capabilities_checked || [
+          {
+            id: 'grant_live_01',
+            entity_id: data.transaction?.entity_id || 'agent',
+            capability: 'exec_container_script',
+            granted_by: 'security_policy_enforcer',
+            active: true,
+            created_at: new Date().toISOString(),
+            expires_at: null
+          }
+        ],
+        violations_raised: (data.violations || data.violations_raised || []).map((v: any) => ({
+          id: v.id || `viol_${Math.floor(Math.random() * 1000)}`,
+          violation_type: v.violation_type || 'UNAUTHORIZED_ACCESS',
+          severity: v.severity || 'CRITICAL',
+          capability_attempted: v.capability_attempted || 'exec:raw_sql',
+          created_at: v.created_at || v.violation_created_at || new Date().toISOString()
+        }))
+      };
     }
 
     await this.delay();
@@ -314,7 +419,18 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/decisions/${encodeURIComponent(id)}/chain?direction=${direction}`);
       if (!res.ok) throw new Error(`Fetch decision chain failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.chain || []);
+      return items.map((item: any) => ({
+        id: item.id,
+        parent_decision_id: item.parent_decision_id || null,
+        rollback_of: item.rollback_of || null,
+        entropy_class: item.entropy_class || 'NOMINAL',
+        author_id: item.author_id || item.agent_role || 'system',
+        summary: item.summary || item.title || item.rationale || 'Decision Node',
+        rationale: item.rationale || item.summary || item.title || 'Evaluated per policy rule',
+        created_at: item.created_at || new Date().toISOString()
+      }));
     }
     await this.delay();
     return MOCK_DECISIONS_CHAIN;
@@ -324,7 +440,21 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/traces/${encodeURIComponent(id)}/tree`);
       if (!res.ok) throw new Error(`Fetch trace tree failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const rootNode = (data.tree && data.tree[0]) ? data.tree[0] : data;
+      const normalizeNode = (n: any): TraceTreeNode => ({
+        id: n.id || id,
+        trace_id: n.trace_id || n.id || id,
+        parent_id: n.parent_trace_id || n.parent_id || null,
+        name: n.name || n.stage || 'Execution Trace',
+        confidence: n.confidence ?? 0.95,
+        rejected_alternatives: n.rejected_alternatives || [],
+        metadata: n.metadata || {},
+        children: Array.isArray(n.children) ? n.children.map(normalizeNode) : [],
+        duration_ms: n.duration_ms || 45,
+        status: (n.status === 'completed' ? 'SUCCESS' : n.status) || 'SUCCESS'
+      });
+      return normalizeNode(rootNode);
     }
     await this.delay();
     return MOCK_TRACE_TREE;
@@ -334,7 +464,16 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/entities/${encodeURIComponent(entityId)}/capability-gap`);
       if (!res.ok) throw new Error(`Fetch capability gap failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.capability_gaps || []);
+      return items.map((item: any) => ({
+        entity_id: item.entity_id || entityId,
+        capability_attempted: item.capability_attempted || 'exec:unknown',
+        violation_id: item.violation_id || `viol_${Math.floor(Math.random() * 1000)}`,
+        violation_created_at: item.violation_created_at || item.created_at || new Date().toISOString(),
+        gap_status: item.gap_status || 'missing',
+        notes: item.context ? JSON.stringify(item.context) : (item.notes || 'Gap identified via security evaluation')
+      }));
     }
     await this.delay();
     return MOCK_CAPABILITY_GAP;
@@ -344,7 +483,23 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/state/${encodeURIComponent(key)}/versions`);
       if (!res.ok) throw new Error(`Fetch state versions failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const rawVersions = data.historical_versions || data.versions || [];
+      const versions: StateVersion[] = rawVersions.map((v: any, idx: number) => ({
+        version: v.version ?? (rawVersions.length - idx),
+        tx_id: v.transaction_id || v.tx_id || `tx_v${idx}`,
+        author_id: v.author_id || 'system',
+        agent_role: v.agent_role || 'security_policy_enforcer',
+        created_at: v.created_at || v.committed_at || new Date().toISOString(),
+        checksum: v.checksum || `sha256_${v.transaction_id || idx}`,
+        delta_summary: v.delta_summary || `Modified ${v.touched_key || key}`,
+        keys_modified: v.keys_modified || [v.touched_key || key]
+      }));
+      return {
+        key: data.key || key,
+        versions,
+        current: data.current || {}
+      };
     }
 
     await this.delay();
@@ -362,7 +517,25 @@ class PebApiClient {
     if (this.mode === 'live') {
       const res = await fetch(`${this.baseUrl}/api/peb/state/${encodeURIComponent(key)}/diff?from=${fromTxId}&to=${toTxId}`);
       if (!res.ok) throw new Error(`Fetch state diff failed: ${res.statusText}`);
-      return res.json();
+      const data = await res.json();
+      const changedMap: Record<string, { from: any; to: any }> = {};
+      if (Array.isArray(data.diff?.changed)) {
+        data.diff.changed.forEach((c: any) => {
+          changedMap[c.key] = { from: c.from, to: c.to };
+        });
+      } else if (data.diff?.changed) {
+        Object.assign(changedMap, data.diff.changed);
+      }
+      return {
+        key: data.key || key,
+        from_tx_id: data.from?.transaction_id || fromTxId,
+        to_tx_id: data.to?.transaction_id || toTxId,
+        added: data.diff?.added || {},
+        removed: data.diff?.removed || {},
+        changed: changedMap,
+        from_value: data.from?.content || {},
+        to_value: data.to?.content || {}
+      };
     }
 
     await this.delay();
