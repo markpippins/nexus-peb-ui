@@ -230,7 +230,7 @@ class PebApiClient {
       payload: {
         replayed_receipt_id: receiptId,
         original_event_type: event.event_type,
-        triggered_by: 'peb-srv-ide-ui'
+        triggered_by: 'peb-ui'
       },
       replayed_at: null,
       created_at: now

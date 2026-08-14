@@ -89,7 +89,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 p-4 font-mono text-xs overflow-y-auto max-h-full">
+    <div className="space-y-4 p-4 font-mono text-sm overflow-y-auto max-h-full">
       {/* HEADER BAR */}
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
         <div>
@@ -141,7 +141,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <AlertTriangle className={`w-4 h-4 ${breakers.some((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))) ? 'text-rose-400 animate-bounce' : 'text-emerald-400'}`} />
           </div>
           <div className="text-2xl font-extrabold mt-1 text-rose-400">
-            {breakers.filter((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))).length} <span className="text-xs font-normal text-zinc-400">/ {breakers.length} TRIPPED</span>
+            {breakers.filter((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))).length} <span className="text-sm font-normal text-zinc-400">/ {breakers.length} TRIPPED</span>
           </div>
           <div className="text-[10px] text-zinc-500 mt-1">
             {breakers.filter((b) => b.state === 'OPEN' || Boolean(b.isOpen) || (typeof b.tripped === 'number' ? b.tripped > 0 : Boolean(b.tripped))).length > 0 ? 'Tripped roles auto-isolated' : 'All agent roles operational'}
@@ -186,7 +186,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between mb-3 border-b border-zinc-800 pb-2">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-emerald-400" />
-            <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-xs">
+            <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-sm">
               ROLE CIRCUIT BREAKER MONITORING (`peb.role_circuit_breaker`)
             </h2>
           </div>
@@ -260,7 +260,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between mb-3 border-b border-zinc-800 pb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-indigo-400" />
-              <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-xs">
+              <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-sm">
                 DECISION ENTROPY TREND (14-DAY ROLLUP)
               </h2>
             </div>
@@ -293,7 +293,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between mb-3 border-b border-zinc-800 pb-2">
             <div className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-amber-400" />
-              <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-xs">
+              <h2 className="font-bold text-zinc-200 uppercase tracking-wider text-sm">
                 VIOLATIONS BY SEVERITY & TYPE
               </h2>
             </div>

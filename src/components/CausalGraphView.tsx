@@ -145,7 +145,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
   };
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden">
       {/* HEADER & SUB-TABS */}
       <div className="p-3 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between shrink-0">
         <div>
@@ -170,7 +170,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
       <div className="flex border-b border-zinc-800 bg-zinc-900/80 px-3 gap-2 shrink-0">
         <button
           onClick={() => setSubTab('lineage')}
-          className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
             subTab === 'lineage'
               ? 'border-emerald-400 text-emerald-300'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -182,7 +182,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
 
         <button
           onClick={() => setSubTab('decisions')}
-          className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
             subTab === 'decisions'
               ? 'border-emerald-400 text-emerald-300'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -194,7 +194,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
 
         <button
           onClick={() => setSubTab('trace')}
-          className={`px-3 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+          className={`px-3 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
             subTab === 'trace'
               ? 'border-emerald-400 text-emerald-300'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -296,7 +296,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
                     <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-emerald-400" />
-                        <span className="font-bold text-emerald-300 uppercase text-xs">
+                        <span className="font-bold text-emerald-300 uppercase text-sm">
                           EXECUTION TRACE HIERARCHY (`lineage.traces_tree`)
                         </span>
                       </div>
@@ -346,7 +346,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
                   <div className="p-4 rounded bg-zinc-950 border border-zinc-800 space-y-3">
                     <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
                       <Clock className="w-4 h-4 text-indigo-400" />
-                      <span className="font-bold text-indigo-300 uppercase text-xs">
+                      <span className="font-bold text-indigo-300 uppercase text-sm">
                         GOVERNANCE EVENTS TIMELINE (`lineage.governance_events`)
                       </span>
                     </div>
@@ -377,7 +377,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setDecisionDirection('ancestry')}
-                  className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
+                  className={`px-3 py-1 rounded text-sm font-bold border transition-colors ${
                     decisionDirection === 'ancestry'
                       ? 'bg-emerald-950 border-emerald-700 text-emerald-300'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-400'
@@ -387,7 +387,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
                 </button>
                 <button
                   onClick={() => setDecisionDirection('rollback')}
-                  className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
+                  className={`px-3 py-1 rounded text-sm font-bold border transition-colors ${
                     decisionDirection === 'rollback'
                       ? 'bg-rose-950 border-rose-700 text-rose-300'
                       : 'bg-zinc-950 border-zinc-800 text-zinc-400'
@@ -413,7 +413,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
                       </span>
                     </div>
 
-                    <div className="text-zinc-200 font-semibold text-xs">{node.summary}</div>
+                    <div className="text-zinc-200 font-semibold text-sm">{node.summary}</div>
                     <div className="text-zinc-400 italic text-[11px] bg-zinc-900/60 p-2 rounded border border-zinc-800">
                       "{node.rationale}"
                     </div>
@@ -433,7 +433,7 @@ export const CausalGraphView: React.FC<CausalGraphViewProps> = ({ theme, density
         {subTab === 'trace' && traceTree && (
           <div className="p-3.5 rounded bg-zinc-950 border border-zinc-800 space-y-3">
             <div className="border-b border-zinc-800 pb-2 flex items-center justify-between">
-              <span className="font-bold text-emerald-400 uppercase text-xs">
+              <span className="font-bold text-emerald-400 uppercase text-sm">
                 RECURSIVE DESCENDANTS TREE (`/traces/{traceTree.trace_id}/tree`)
               </span>
               <span className="text-[10px] text-zinc-500">Root Trace Node</span>

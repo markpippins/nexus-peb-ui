@@ -93,7 +93,7 @@ export const TransactionDetailPanel: React.FC<TransactionDetailPanelProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex justify-end transition-opacity">
-      <div className="w-full max-w-2xl bg-zinc-950 border-l border-zinc-800 h-full flex flex-col font-mono text-xs shadow-2xl overflow-hidden">
+      <div className="w-full max-w-2xl bg-zinc-950 border-l border-zinc-800 h-full flex flex-col font-mono text-sm shadow-2xl overflow-hidden">
         {/* PANEL HEADER */}
         <div className="p-3.5 border-b border-zinc-800 bg-zinc-900/90 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export const TransactionDetailPanel: React.FC<TransactionDetailPanelProps> = ({
                     const badge = RESULT_BADGES[tx.admission_result] || RESULT_BADGES.ADMITTED;
                     return (
                       <div
-                        className={`px-3 py-1 rounded-md border flex items-center gap-2 text-xs font-bold ${badge.bg} ${badge.text} ${badge.border}`}
+                        className={`px-3 py-1 rounded-md border flex items-center gap-2 text-sm font-bold ${badge.bg} ${badge.text} ${badge.border}`}
                       >
                         {badge.icon}
                         <span>{tx.admission_result}</span>

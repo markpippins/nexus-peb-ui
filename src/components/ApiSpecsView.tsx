@@ -81,7 +81,7 @@ export const ApiSpecsView: React.FC<ApiSpecsViewProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden">
       {/* HEADER */}
       <div className="p-3 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between shrink-0">
         <div>
@@ -96,7 +96,7 @@ export const ApiSpecsView: React.FC<ApiSpecsViewProps> = ({
 
         <button
           onClick={onOpenMockConfig}
-          className="px-3 py-1.5 rounded bg-amber-950 border border-amber-700 hover:bg-amber-900 text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
+          className="px-3 py-1.5 rounded bg-amber-950 border border-amber-700 hover:bg-amber-900 text-amber-300 font-bold text-sm flex items-center gap-1.5 transition-colors"
         >
           <Sliders className="w-4 h-4 text-amber-400" />
           <span>CONFIGURE MOCK SCHEME</span>
@@ -150,7 +150,7 @@ export const ApiSpecsView: React.FC<ApiSpecsViewProps> = ({
             <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
               <div className="flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-emerald-400" />
-                <span className="font-bold text-emerald-400 text-xs uppercase">INTERACTIVE API TEST CONSOLE</span>
+                <span className="font-bold text-emerald-400 text-sm uppercase">INTERACTIVE API TEST CONSOLE</span>
               </div>
               <span className="text-[10px] text-zinc-500">{apiMode.toUpperCase()} MODE</span>
             </div>

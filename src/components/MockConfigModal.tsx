@@ -76,7 +76,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none font-mono text-xs">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none font-mono text-sm">
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* MODAL HEADER */}
         <div className="p-3.5 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between">
@@ -173,7 +173,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleInjectViolation}
-                className="px-3 py-1.5 rounded bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 rounded bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold text-sm flex items-center gap-1.5 transition-colors"
               >
                 <ShieldAlert className="w-4 h-4 text-rose-400" />
                 <span>Inject Test Capability Violation</span>
@@ -209,7 +209,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
         <div className="p-3 border-t border-zinc-800 bg-zinc-900 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-xs hover:bg-emerald-900 transition-colors"
+            className="px-4 py-1.5 rounded bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-sm hover:bg-emerald-900 transition-colors"
           >
             DONE
           </button>
