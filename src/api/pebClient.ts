@@ -32,8 +32,16 @@ import {
 export type ApiMode = 'mock' | 'live';
 
 class PebApiClient {
-  private mode: ApiMode = 'mock';
+  // Environment-selected mode is authoritative: live unless VITE_PEB_API_MODE=mock
+  // is explicitly set. The previous hardcoded 'mock' default made the UI start in
+  // simulation even when a live backend was configured.
+  private mode: ApiMode =
+    (import.meta as any).env?.VITE_PEB_API_MODE === 'mock' ? 'mock' : 'live';
+  // Observability API (peb-srv:3111) — health/events/transactions/state reads.
   private baseUrl: string = (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:3111';
+  // PEB kernel (Python, :8098) — the admission/state/hash contract, kept separate
+  // from the observability contract per the live-mode audit.
+  private kernelUrl: string = (import.meta as any).env?.VITE_PEB_KERNEL_URL || 'http://localhost:8098';
   private eventsStore: GovernanceEvent[] = generateInitialEvents();
   private mockSseSubscribers: Set<(event: GovernanceEvent) => void> = new Set();
   private sseTimer: any = null;
@@ -56,6 +64,57 @@ class PebApiClient {
 
   public setBaseUrl(url: string) {
     this.baseUrl = url.replace(/\/$/, '');
+  }
+
+  public getKernelUrl(): string {
+    return this.kernelUrl;
+  }
+
+  public setKernelUrl(url: string) {
+    this.kernelUrl = url.replace(/\/$/, '');
+  }
+
+  // ── PEB kernel contract (:8098, Python kernel) — admission / state / hash ──
+  // These target the kernel directly and are exercised separately from the
+  // peb-srv:3111 observability reads above.
+
+  public async getKernelHealth(): Promise<{ status: string; database?: string; schema?: string }> {
+    if (this.mode === 'live') {
+      const res = await fetch(`${this.kernelUrl}/actuator/health`);
+      if (!res.ok) throw new Error(`PEB kernel health failed: ${res.statusText}`);
+      return await res.json();
+    }
+    await this.delay();
+    return { status: 'UP', database: 'reachable (mock)', schema: 'peb' };
+  }
+
+  public async getStateHash(): Promise<{ peb_state_hash?: string; last_decision_hash?: string; cognitive_mode?: string }> {
+    if (this.mode === 'live') {
+      const res = await fetch(`${this.kernelUrl}/api/v1/peb/state/hash`);
+      if (!res.ok) throw new Error(`PEB kernel state hash failed: ${res.statusText}`);
+      return await res.json();
+    }
+    await this.delay();
+    return { peb_state_hash: 'mock_state_hash', last_decision_hash: 'mock_decision_hash' };
+  }
+
+  public async submitAdmission(request: {
+    idempotencyKey: string;
+    entityId: string;
+    toolName: string;
+    input: Record<string, unknown>;
+  }): Promise<{ message?: string; admitted?: boolean; transaction_id?: string }> {
+    if (this.mode === 'live') {
+      const res = await fetch(`${this.kernelUrl}/api/v1/peb/transaction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      if (!res.ok) throw new Error(`PEB kernel admission failed: ${res.statusText}`);
+      return await res.json();
+    }
+    await this.delay(250);
+    return { message: 'Admission evaluated (mock)', admitted: true, transaction_id: `tx_mock_${Math.floor(Math.random() * 100000)}` };
   }
 
   // Simulates or connects live SSE stream

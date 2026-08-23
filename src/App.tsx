@@ -18,10 +18,11 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>('steel');
   const [density, setDensity] = useState<'compact' | 'normal'>('compact');
-  const [apiMode, setApiMode] = useState<ApiMode>('mock');
-  const [baseUrl, setBaseUrl] = useState<string>(
-    (import.meta as any).env?.VITE_PEB_API_BASE_URL || 'http://localhost:4206'
-  );
+  // Mode + endpoints are environment-selected (see pebClient): the UI boots in
+  // live mode unless VITE_PEB_API_MODE=mock, and the base URL comes from the
+  // client's env default (peb-srv:3111) rather than a divergent hardcode.
+  const [apiMode, setApiMode] = useState<ApiMode>(pebClient.getMode());
+  const [baseUrl, setBaseUrl] = useState<string>(pebClient.getBaseUrl());
   const [showMockConfig, setShowMockConfig] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [targetEntityForCapability, setTargetEntityForCapability] = useState<string>('agent:runner-pod-99');
