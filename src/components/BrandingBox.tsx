@@ -74,7 +74,7 @@ export const BrandingBox: React.FC<BrandingBoxProps> = ({
   return (
     <div className={`border-b select-none transition-all duration-200 backdrop-blur-md ${containerStyle}`}>
       {/* Top IDE Bar */}
-      <div className="flex items-center justify-between px-3.5 py-2 gap-3 text-xs">
+      <div className="flex items-center justify-between px-3.5 py-2 gap-3 text-sm">
         
         {/* TOP LEFT BRANDING BOX */}
         <div className={`flex items-center gap-2.5 min-w-max pr-3 border-r ${theme === 'light' ? 'border-slate-200' : 'border-zinc-800/80'}`}>

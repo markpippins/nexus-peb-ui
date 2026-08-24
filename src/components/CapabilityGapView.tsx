@@ -83,7 +83,7 @@ export const CapabilityGapView: React.FC<CapabilityGapViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden">
       {/* HEADER */}
       <div className="p-3 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between shrink-0">
         <div>
@@ -221,7 +221,7 @@ export const CapabilityGapView: React.FC<CapabilityGapViewProps> = ({
           {selectedItem && (
             <div className="p-4 bg-zinc-950 border-t border-zinc-800 space-y-3 shrink-0">
               <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                <span className="font-bold text-emerald-400 text-xs">
+                <span className="font-bold text-emerald-400 text-sm">
                   CAPABILITY GAP OVERLAY DETAILS FOR `{selectedItem.capability_attempted}`
                 </span>
                 <button

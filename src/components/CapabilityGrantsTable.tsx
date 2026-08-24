@@ -64,7 +64,7 @@ export const CapabilityGrantsTable: React.FC<CapabilityGrantsTableProps> = ({
   const expiredCount = grants.length - activeCount;
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden border border-zinc-800 rounded-lg bg-zinc-950">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden border border-zinc-800 rounded-lg bg-zinc-950">
       {/* HEADER */}
       <div className="p-3 border-b border-zinc-800 bg-zinc-900/90 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export const CapabilityGrantsTable: React.FC<CapabilityGrantsTableProps> = ({
             placeholder="Search capability or granter..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent text-zinc-200 placeholder-zinc-600 focus:outline-none w-full text-xs"
+            className="bg-transparent text-zinc-200 placeholder-zinc-600 focus:outline-none w-full text-sm"
           />
         </div>
 

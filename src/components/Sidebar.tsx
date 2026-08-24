@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 onClick={() => onSelectView(item.id)}
                 title={collapsed ? item.label : undefined}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-mono transition-all duration-150 ${activeItemStyle}`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-mono transition-all duration-150 ${activeItemStyle}`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className={isActive ? (theme === 'steel' ? 'text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]' : 'text-emerald-500 drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]') : 'text-zinc-400'}>
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={onToggleCollapse}
-          className={`w-full flex items-center justify-center py-1 rounded text-xs font-mono border transition-colors ${
+          className={`w-full flex items-center justify-center py-1 rounded text-sm font-mono border transition-colors ${
             theme === 'light'
               ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-300'
               : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border-zinc-800/80'

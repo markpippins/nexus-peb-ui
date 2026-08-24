@@ -54,7 +54,7 @@ export const StateDiffView: React.FC<StateDiffViewProps> = ({ theme, density }) 
   const pyClass = density === 'compact' ? 'py-1.5 px-2.5' : 'py-2.5 px-3.5';
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden">
       {/* HEADER */}
       <div className="p-3 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between shrink-0">
         <div>
@@ -147,7 +147,7 @@ export const StateDiffView: React.FC<StateDiffViewProps> = ({ theme, density }) 
                     : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
                 }`}
               >
-                <div className="flex items-center justify-between text-xs font-bold">
+                <div className="flex items-center justify-between text-sm font-bold">
                   <span className="text-emerald-400">Version {v.version}</span>
                   <span className="text-amber-300 text-[10px]">{v.tx_id}</span>
                 </div>

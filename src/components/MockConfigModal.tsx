@@ -34,6 +34,10 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
   onTriggerRefresh
 }) => {
   const [tempUrl, setTempUrl] = useState(baseUrl);
+  const [tempKernelUrl, setTempKernelUrl] = useState(pebClient.getKernelUrl());
+  const [kernelHealth, setKernelHealth] = useState<string | null>(null);
+  const [stateHash, setStateHash] = useState<string | null>(null);
+  const [admissionResult, setAdmissionResult] = useState<string | null>(null);
   const [copiedCurl, setCopiedCurl] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -41,6 +45,32 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
   const handleSaveUrl = () => {
     pebClient.setBaseUrl(tempUrl);
     onBaseUrlChange(tempUrl);
+  };
+
+  const handleKernelProbe = async () => {
+    try {
+      const [health, hash] = await Promise.all([pebClient.getKernelHealth(), pebClient.getStateHash()]);
+      setKernelHealth(health.status || 'unknown');
+      setStateHash(hash.peb_state_hash || null);
+    } catch (err: any) {
+      setKernelHealth('UNREACHABLE');
+      setStateHash(null);
+      setAdmissionResult(`probe failed: ${err?.message || String(err)}`);
+    }
+  };
+
+  const handleSubmitTestAdmission = async () => {
+    try {
+      const result = await pebClient.submitAdmission({
+        idempotencyKey: `ui-admit-${Date.now()}`,
+        entityId: 'agent:runner-pod-99',
+        toolName: 'peb_repo_read',
+        input: { command: 'ls', mode: 'EVALUATION' },
+      });
+      setAdmissionResult(JSON.stringify(result, null, 2));
+    } catch (err: any) {
+      setAdmissionResult(`admission failed: ${err?.message || String(err)}`);
+    }
   };
 
   const handleInjectViolation = () => {
@@ -76,7 +106,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none font-mono text-xs">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none font-mono text-sm">
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* MODAL HEADER */}
         <div className="p-3.5 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between">
@@ -165,6 +195,56 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
             </div>
           </div>
 
+          {/* PEB KERNEL CONTRACT (8098) — separate from the 3111 observability API */}
+          <div className="p-3.5 rounded bg-zinc-900/80 border border-zinc-800 space-y-2">
+            <span className="text-[10px] font-bold text-fuchsia-400 uppercase tracking-wider block">
+              PEB KERNEL (PORT 8098) — ADMISSION / STATE / HASH CONTRACT
+            </span>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tempKernelUrl}
+                onChange={(e) => setTempKernelUrl(e.target.value)}
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-fuchsia-300 font-mono focus:outline-none focus:border-fuchsia-500"
+                placeholder="http://localhost:8098"
+              />
+              <button
+                onClick={() => {
+                  pebClient.setKernelUrl(tempKernelUrl);
+                  onTriggerRefresh();
+                }}
+                className="px-3 py-1.5 rounded bg-fuchsia-950 border border-fuchsia-700 text-fuchsia-300 font-bold hover:bg-fuchsia-900 transition-colors"
+              >
+                UPDATE
+              </button>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-zinc-400">
+              <span className="flex items-center gap-1.5">
+                <span className={`inline-block size-1.5 rounded-full ${kernelHealth === 'UP' ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                kernel {kernelHealth || 'unknown'}
+              </span>
+              {stateHash && <span className="truncate">hash {stateHash.slice(0, 16)}…</span>}
+              <button
+                onClick={handleKernelProbe}
+                className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 font-bold"
+              >
+                PROBE
+              </button>
+            </div>
+            <button
+              onClick={handleSubmitTestAdmission}
+              className="px-3 py-1.5 rounded bg-fuchsia-950 border border-fuchsia-800 text-fuchsia-300 hover:bg-fuchsia-900 font-bold text-sm flex items-center gap-1.5 transition-colors"
+            >
+              <Terminal className="w-4 h-4 text-fuchsia-400" />
+              <span>Submit Test Admission</span>
+            </button>
+            {admissionResult && (
+              <div className="p-2 rounded bg-zinc-950 border border-fuchsia-900 text-[10px] text-fuchsia-300 font-mono">
+                {admissionResult}
+              </div>
+            )}
+          </div>
+
           {/* MOCK INJECTION UTILITIES */}
           <div className="p-3.5 rounded bg-zinc-900/80 border border-zinc-800 space-y-2">
             <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
@@ -173,7 +253,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleInjectViolation}
-                className="px-3 py-1.5 rounded bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 rounded bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 font-bold text-sm flex items-center gap-1.5 transition-colors"
               >
                 <ShieldAlert className="w-4 h-4 text-rose-400" />
                 <span>Inject Test Capability Violation</span>
@@ -209,7 +289,7 @@ export const MockConfigModal: React.FC<MockConfigModalProps> = ({
         <div className="p-3 border-t border-zinc-800 bg-zinc-900 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-xs hover:bg-emerald-900 transition-colors"
+            className="px-4 py-1.5 rounded bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-sm hover:bg-emerald-900 transition-colors"
           >
             DONE
           </button>

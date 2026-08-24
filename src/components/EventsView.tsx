@@ -133,7 +133,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full font-mono text-xs overflow-hidden">
+    <div className="flex flex-col h-full font-mono text-sm overflow-hidden">
       {/* TOP HEADER BAR */}
       <div className="p-3 border-b border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-950">
         <div>
@@ -346,10 +346,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
           <div className="w-80 border-l border-zinc-800 bg-zinc-950 p-3.5 flex flex-col justify-between overflow-y-auto shrink-0">
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                <span className="font-bold text-emerald-400 text-xs">EVENT RECEIPT DETAILED PAYLOAD</span>
+                <span className="font-bold text-emerald-400 text-sm">EVENT RECEIPT DETAILED PAYLOAD</span>
                 <button
                   onClick={() => setSelectedEvent(null)}
-                  className="text-zinc-500 hover:text-zinc-200 text-xs font-bold px-1"
+                  className="text-zinc-500 hover:text-zinc-200 text-sm font-bold px-1"
                 >
                   ✕
                 </button>
@@ -401,7 +401,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               <button
                 onClick={(e) => handleReplay(selectedEvent.receipt_id, e)}
                 disabled={replayingReceipt === selectedEvent.receipt_id}
-                className="w-full py-1.5 rounded bg-emerald-950 border border-emerald-700 hover:bg-emerald-900 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-1.5 rounded bg-emerald-950 border border-emerald-700 hover:bg-emerald-900 text-emerald-300 font-bold text-sm flex items-center justify-center gap-1.5 transition-colors"
               >
                 <Repeat className={`w-3.5 h-3.5 ${replayingReceipt === selectedEvent.receipt_id ? 'animate-spin' : ''}`} />
                 <span>POST /api/peb/events/{selectedEvent.receipt_id}/replay</span>
